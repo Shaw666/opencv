@@ -4,13 +4,12 @@
 #include <QDir>
 #include <iostream>
 #include <fstream>
-
 #include <QFileInfo>
 #include <qcoreapplication.h>
-#include <thread>
 #include <QTimer>
 
 
+#define Get_Test_Image
 
 using namespace std;
 using namespace cv;
@@ -20,51 +19,79 @@ constexpr auto face_cascade_name = "../../../../opencv/sources/data/haarcascades
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), ui(new Ui::MainWindow)
 {
+
+
+    capture_exit_ = false;
+    save_roi_once_ = false;
+    last_compare_roi_ts = std::chrono::steady_clock();
     ui->setupUi(this);
     m_pImageWidget = new ImageWidget(this);
     ui->centralwidget->layout()->addWidget(m_pImageWidget);
+
     //-- 1. Load the cascades
     // QFileInfo fileInfo(face_cascade_name);
     // qDebug() << fileInfo.absoluteFilePath();
     //fileInfo.absoluteFilePath().toStdString()
-     if (!face_cascade.load(face_cascade_name)) {
-         printf("--(!)error loading face cascade\n");
-         return;
-     };
+    if (!face_cascade.load(face_cascade_name)) {
+        printf("--(!)error loading face cascade\n");
+        return;
+    };
+
     // detect();
-    // loadModule();
+    loadModule();
+
     // FindYou();
     connect(ui->pushButton, &QPushButton::clicked, this, [this]() {
         VideoCapture();
+    });
+    connect(ui->pushButton_roi, &QPushButton::clicked, this, [this]() {
+        save_roi_once_ = true;
     });
 }
 
 MainWindow::~MainWindow()
 {
+    capture_exit_ = true;
+
+    if(video_capture_thread->joinable())
+        video_capture_thread->join();
+
     delete ui;
 }
 
 void MainWindow::detectFrame(Mat &frame_bgr)
 {
+    static int j = 0;
     Mat frame_gray;
     std::vector<Rect> faces;
     cvtColor(frame_bgr, frame_gray, COLOR_BGR2GRAY);
     equalizeHist(frame_gray, frame_gray);
     face_cascade.detectMultiScale(frame_gray, faces, 1.1, 3, CASCADE_DO_ROUGH_SEARCH, Size(70, 70), Size(200, 200));
-
+    std::map<int, cv::Rect> id_rect_map;
     for (size_t i = 0; i < faces.size(); i++) {
         rectangle(frame_bgr, faces[i], Scalar(255, 0, 0), 2, LINE_8, 0);
-        // Mat faceROI = frame_gray(faces[i]);
-        // Mat MyFace;
-        // if (faceROI.cols > 100) {
-        //     cv::resize(faceROI, MyFace, Size(92, 112));
-        //     QString str = QString("%1/myfaces/face%2.jpg").arg(QCoreApplication::applicationDirPath()).arg(j++);
-        //     bool ret = imwrite(str.toStdString().c_str(), MyFace);
-        //     qDebug() << "save face image : " << str << ret;
-        // }
+        Mat faceROI = frame_gray(faces[i]);
+        Mat MyFace;
+
+
+        if (faceROI.cols > 100) {
+            cv::resize(faceROI, MyFace, Size(92, 112));
+
+            if (save_roi_once_) {
+                save_roi_once_ = false;
+                QString str = QString("%1/myfaces/face%2.jpg").arg(QCoreApplication::applicationDirPath()).arg(j++);
+                bool ret = imwrite(str.toStdString().c_str(), MyFace);
+                qDebug() << "save face image : " << str << ret;
+            }
+
+            int id = FindYou(MyFace, 0);
+            // int id = 35;
+            id_rect_map.emplace(id, faces[i]);
+
+        }
     }
+    frame_bgr_queue_.push({frame_bgr, id_rect_map});
     //pMutex_->lock();
-    frame_bgr_queue_.push(std::move(frame_bgr));
     //pMutex_->unlock();
 }
 
@@ -73,6 +100,7 @@ void MainWindow::detectImages()
     QDir dir("C:\\Users\\xhp\\Pictures\\Saved Pictures");
     QFileInfoList files = dir.entryInfoList(QStringList() << "*.jpg");
     int j = 0;
+
     for (auto &&filePath : files) {
         qDebug() << filePath.absoluteFilePath();
         Mat frame_bgr = imread(filePath.absoluteFilePath().toLocal8Bit().constData());
@@ -92,11 +120,8 @@ void MainWindow::detectImages()
             // ellipse(frame_bgr, center, Size(faces[i].width / 2, faces[i].height / 2), 0, 0, 360, Scalar(255, 0, 255), 4, 8, 0);
             //  1 给图片画上人脸框
             rectangle(frame_bgr, faces[i], Scalar(255, 0, 0), 2, LINE_8, 0);
-            // 1
-
             Mat faceROI = frame_gray(faces[i]);
             Mat MyFace;
-
             if (faceROI.cols > 100) {
                 cv::resize(faceROI, MyFace, Size(92, 112));
                 QString str = QString("%1/myfaces/face%2.jpg").arg(QCoreApplication::applicationDirPath()).arg(j++);
@@ -162,10 +187,12 @@ void MainWindow::loadModule()
     vector<int> labels;
 
     read_csv(fn_csv, images, labels);
+
     if (images.size() <= 1) {
         string error_message = "This demo needs at least 2 images to work. Please add more images to your data set!";
         CV_Error(cv::Error::StsBadArg, error_message);
     }
+
     // 下面的几行代码仅仅是从你的数据集中移除最后一张图片
     //[gm:自然这里需要根据自己的需要修改，他这里简化了很多问题]
     int testIndex = 353;
@@ -175,58 +202,65 @@ void MainWindow::loadModule()
     labels.pop_back();
     std::string modelFilePath = QCoreApplication::applicationDirPath().toStdString() + "/MyFacePCAModel.xml";
     model_ = cv::face::EigenFaceRecognizer::create();
+
     if (!QFileInfo::exists(modelFilePath.c_str())) {
         model_->train(images, labels);
         model_->save(modelFilePath);
     } else {
         model_->read(modelFilePath);
     }
+
+    qDebug() << "load module success";
 }
 
 void MainWindow::VideoCapture()
 {
-    //video_capture_ = make_unique<cv::VideoCapture>();
-    //video_capture_->open(0);
-    //if (!video_capture_->isOpened()) {
-    //    cerr << "打开相机失败" << endl;
-    //    return ;
-    //}
-    std::thread video_capture_thread([this]() {
-        cv::VideoCapture video_capture;// = make_unique<cv::VideoCapture>();
-        bool ret = video_capture.open(700);
-        if (!ret || !video_capture.isOpened()) {
-            cerr << "打开相机失败" << endl;
-            return;
-        }
-        while (1) {
+    // = make_unique<cv::VideoCapture>();
+    capture_exit_ = false;
+    bool ret = video_capture.open(0);
+
+    if (!ret || !video_capture.isOpened()) {
+        cerr << "打开相机失败" << endl;
+        return;
+    }
+
+    video_capture_thread = new std::thread([this]() {
+        //cv::VideoCapture video_capture;// = make_unique<cv::VideoCapture>();
+        //bool ret = video_capture.open(0);
+        //if (!ret || !video_capture.isOpened()) {
+        //    cerr << "打开相机失败" << endl;
+        //    return;
+        //}
+        while (!capture_exit_) {
             Mat img;
-            video_capture.read(img);
+            video_capture >> (img);
             Mat img_small;
             cv::resize(img, img_small, Size(img.cols / 2, img.rows / 2));
             detectFrame(img_small);
-            this_thread::sleep_for(std::chrono::milliseconds(66));
+            this_thread::sleep_for(std::chrono::milliseconds(10));
         }
 
     });
 
     QTimer *pTimer = new QTimer(this);
     connect(pTimer, &QTimer::timeout, this, [this]() {
-        //pMutex_->lock();
         if (frame_bgr_queue_.empty())
             return;
-        cv::Mat frame_bgr = frame_bgr_queue_.front();
+
+        auto data = frame_bgr_queue_.front();
         frame_bgr_queue_.pop();
         //pMutex_->unlock();
-        cvtColor(frame_bgr, frame_bgr, COLOR_BGR2RGB);
-        QImage qim((const unsigned char *)frame_bgr.data, frame_bgr.cols, frame_bgr.rows, frame_bgr.step,
+        cvtColor(data.frame, data.frame, COLOR_BGR2RGB);
+        QImage qim((const unsigned char *)data.frame.data, data.frame.cols, data.frame.rows, data.frame.step,
                    QImage::Format_RGB888);
-        m_pImageWidget->refreshImage(qim);
+        
+        m_pImageWidget->refreshImage(qim, data.id_rect_map);
 
     });
     pTimer->start(33);
 }
 
-void MainWindow::FindYou(cv::Mat &testSample, int testLabel)
+int MainWindow::FindYou(cv::Mat &testSample, int testLabel)
 {
 
     // Ptr<cv::face::FaceRecognizer> model1 = cv::face::FisherFaceRecognizer::create();
@@ -239,6 +273,7 @@ void MainWindow::FindYou(cv::Mat &testSample, int testLabel)
 
     // 下面对测试图像进行预测，predictedLabel是预测标签结果
     int predictedLabel = model_->predict(testSample);
+    return predictedLabel;
     // int predictedLabel1 = model1->predict(testSample);
     // int predictedLabel2 = model2->predict(testSample);
 
@@ -247,10 +282,10 @@ void MainWindow::FindYou(cv::Mat &testSample, int testLabel)
     //      double confidence = 0.0;
     //      model_->predict(testSample, predictedLabel, confidence);
 
-    string result_message = format("Predicted class = %d / Actual class = %d.", predictedLabel, testLabel);
+    // string result_message = format("Predicted class = %d / Actual class = %d.", predictedLabel, testLabel);
     // string result_message1 = format("Predicted class = %d / Actual class = %d.", predictedLabel1, testLabel);
     // string result_message2 = format("Predicted class = %d / Actual class = %d.", predictedLabel2, testLabel);
-    qDebug() << result_message.c_str();
+    //qDebug() << result_message.c_str();
     // qDebug() << result_message1.c_str() << endl;
     // qDebug()<< result_message2.c_str() << endl;
 }
