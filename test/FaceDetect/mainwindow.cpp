@@ -225,12 +225,6 @@ void MainWindow::VideoCapture()
     }
 
     video_capture_thread = new std::thread([this]() {
-        //cv::VideoCapture video_capture;// = make_unique<cv::VideoCapture>();
-        //bool ret = video_capture.open(0);
-        //if (!ret || !video_capture.isOpened()) {
-        //    cerr << "打开相机失败" << endl;
-        //    return;
-        //}
         while (!capture_exit_) {
             Mat img;
             video_capture >> (img);
