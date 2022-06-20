@@ -79,6 +79,7 @@ Thumbs.db
 /atdatabase
 **/download/*
 !**/download/atdatabase.zip
+!**/download/*.py
 /opencv/*
 !/opencv/install/
 /opencv_contrib-4.5.5
