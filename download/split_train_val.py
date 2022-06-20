@@ -4,8 +4,8 @@ import argparse
 
 
 # annotations_path and save_txt_path
-annotations_path = 'C:/AI/opencv/yolov5-6.1/people_data/Annotations/'
-save_txt_path = "C:/AI/opencv/yolov5-6.1/people_data/ImageSets/Main/"
+annotations_path = 'E:/AI/opencv/yolov5-6.1/people_data/Annotations/'
+save_txt_path = "E:/AI/opencv/yolov5-6.1/people_data/ImageSets/Main/"
 
 def get_opt():
     parser = argparse.ArgumentParser()
@@ -32,7 +32,7 @@ list_index = range(num)
 # 采集的数据集中训练数据和验证数据的总占比
 train_val_percent = 1
 # 训练数据的占比
-train_percent = 0.99
+train_percent = 0.20
 # 采集的数据集中训练数据和验证数据的数量
 tv = int(num * train_val_percent)
 # 训练数据的数量,int()向下取整

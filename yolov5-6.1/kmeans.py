@@ -87,11 +87,11 @@ def kmeans(boxes, k, dist=np.median):
 a = np.array([[1, 2, 3, 4], [5, 7, 6, 8]])
 print(translate_boxes(a))
 
-FILE_ROOT = "C:/AI/opencv/yolov5-6.1/people_data/"     # 根路径
+FILE_ROOT = "E:/AI/opencv/yolov5-6.1/people_data/"     # 根路径
 ANNOTATION_ROOT = "Annotations"  # 数据集标签文件夹路径
 ANNOTATION_PATH = FILE_ROOT + ANNOTATION_ROOT
 
-ANCHORS_TXT_PATH = "C:/AI/opencv/yolov5-6.1/data/anchors.txt"
+ANCHORS_TXT_PATH = "E:/AI/opencv/yolov5-6.1/data/anchors.txt"
 
 CLUSTERS = 9#kmeans方法分9类
 CLASS_NAMES = ["pedestrians", "riders",'partially','ignore','crowd']

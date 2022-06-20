@@ -107,8 +107,6 @@ def train(hyp,  # path/to/hyp.yaml or hyp dictionary
     cuda = device.type != 'cpu'
     init_seeds(1 + RANK)
     with torch_distributed_zero_first(LOCAL_RANK):
-        print("========\n")
-        print(data_dict)
         data_dict = data_dict or check_dataset(data)  # check if None
     train_path, val_path = data_dict['train'], data_dict['val']
     nc = 1 if single_cls else int(data_dict['nc'])  # number of classes
@@ -455,12 +453,12 @@ def train(hyp,  # path/to/hyp.yaml or hyp dictionary
 
 def parse_opt(known=False):
     parser = argparse.ArgumentParser()
-    parser.add_argument('--weights', type=str, default='C:/AI/opencv/yolov5-6.1/weights/yolov5x6.pt', help='initial weights path')
-    parser.add_argument('--cfg', type=str, default='C:/AI/opencv/yolov5-6.1/models/yolov5x.yaml', help='model.yaml path')
-    parser.add_argument('--data', type=str, default='C:/AI/opencv/yolov5-6.1/data/people.yaml', help='dataset.yaml path')
-    parser.add_argument('--hyp', type=str, default='C:/AI/opencv/yolov5-6.1/data/hyps/hyp.scratch-low.yaml', help='hyperparameters path')
-    parser.add_argument('--epochs', type=int, default=300)
-    parser.add_argument('--batch-size', type=int, default=16, help='total batch size for all GPUs, -1 for autobatch')
+    parser.add_argument('--weights', type=str, default='E:/AI/opencv/yolov5-6.1/weights/yolov5s6.pt', help='initial weights path')
+    parser.add_argument('--cfg', type=str, default='E:/AI/opencv/yolov5-6.1/models/yolov5s.yaml', help='model.yaml path')
+    parser.add_argument('--data', type=str, default='E:/AI/opencv/yolov5-6.1/data/people.yaml', help='dataset.yaml path')
+    parser.add_argument('--hyp', type=str, default='E:/AI/opencv/yolov5-6.1/data/hyps/hyp.scratch-low.yaml', help='hyperparameters path')
+    parser.add_argument('--epochs', type=int, default=50)#迭代次数
+    parser.add_argument('--batch-size', type=int, default=24, help='total batch size for all GPUs, -1 for autobatch')
     parser.add_argument('--imgsz', '--img', '--img-size', type=int, default=640, help='train, val image size (pixels)')
     parser.add_argument('--rect', action='store_true', help='rectangular training')
     parser.add_argument('--resume', nargs='?', const=True, default=False, help='resume most recent training')

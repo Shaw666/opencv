@@ -1,5 +1,5 @@
-train: C:/AI/opencv/yolov5-6.1/people_data/train.txt
-val: C:/AI/opencv/yolov5-6.1/people_data/val.txt
+train: E:/AI/opencv/yolov5-6.1/people_data/train.txt
+val: E:/AI/opencv/yolov5-6.1/people_data/val.txt
 nc: 5
-names: ["pedestrians", "riders",'partially','ignore','crowd']
+names: ["people", "people",'people','people','people']
 

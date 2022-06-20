@@ -391,7 +391,6 @@ class LoadImagesAndLabels(Dataset):
         self.stride = stride
         self.path = path
         self.albumentations = Albumentations() if augment else None
-
         try:
             f = []  # image files
             for p in path if isinstance(path, list) else [path]:
@@ -407,7 +406,9 @@ class LoadImagesAndLabels(Dataset):
                         # f += [p.parent / x.lstrip(os.sep) for x in t]  # local to global path (pathlib)
                 else:
                     raise Exception(f'{prefix}{p} does not exist')
+
             self.img_files = sorted(x.replace('/', os.sep) for x in f if x.split('.')[-1].lower() in IMG_FORMATS)
+
             # self.img_files = sorted([x for x in f if x.suffix[1:].lower() in IMG_FORMATS])  # pathlib
             assert self.img_files, f'{prefix}No images found'
         except Exception as e:
@@ -416,7 +417,6 @@ class LoadImagesAndLabels(Dataset):
         # Check cache
         self.label_files = img2label_paths(self.img_files)  # labels
         cache_path = (p if p.is_file() else Path(self.label_files[0]).parent).with_suffix('.cache')
-        print("========", p, Path(self.label_files[0]).parent, cache_path, prefix)
         try:
             cache, exists = np.load(cache_path, allow_pickle=True).item(), True  # load dict
             
@@ -427,7 +427,6 @@ class LoadImagesAndLabels(Dataset):
 
         # Display cache
         nf, nm, ne, nc, n = cache.pop('results')  # found, missing, empty, corrupt, total
-        print("========", nf, nm, ne, nc, n)
         if exists:
             d = f"Scanning '{cache_path}' images and labels... {nf} found, {nm} missing, {ne} empty, {nc} corrupt"
             tqdm(None, desc=prefix + d, total=n, initial=n)  # display cache results
@@ -510,7 +509,6 @@ class LoadImagesAndLabels(Dataset):
             pbar.close()
 
     def cache_labels(self, path=Path('./labels.cache'), prefix=''):
-        print("========", self.img_files, self.label_files)
         # Cache dataset labels, check images and read shapes
         x = {}  # dict
         nm, nf, ne, nc, msgs = 0, 0, 0, 0, []  # number missing, found, empty, corrupt, messages
@@ -518,8 +516,6 @@ class LoadImagesAndLabels(Dataset):
         with Pool(NUM_THREADS) as pool:
             pbar = tqdm(pool.imap(verify_image_label, zip(self.img_files, self.label_files, repeat(prefix))),
                         desc=desc, total=len(self.img_files))
-            print("========", pbar)
-            assert 0
             for im_file, lb, shape, segments, nm_f, nf_f, ne_f, nc_f, msg in pbar:
                 nm += nm_f
                 nf += nf_f
