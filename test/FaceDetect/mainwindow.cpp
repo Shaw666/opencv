@@ -217,7 +217,7 @@ void MainWindow::VideoCapture()
 {
     // = make_unique<cv::VideoCapture>();
     capture_exit_ = false;
-    bool ret = video_capture.open(0);
+    bool ret = video_capture.open("rtsp://192.168.2.101:554/live2");
 
     if (!ret || !video_capture.isOpened()) {
         cerr << "打开相机失败" << endl;
